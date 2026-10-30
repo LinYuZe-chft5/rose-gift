@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#05060f">
+<title>星轨玫瑰 · 希望你喜欢</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #05060f;
+    touch-action: none;
+    user-select: none; -webkit-user-select: none;
+    cursor: pointer;
+  }
+  #sky { display: block; position: fixed; inset: 0; }
+
+  .copy {
+    position: fixed; left: 0; right: 0;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 3vh;
+    pointer-events: none;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", serif;
+    letter-spacing: .14em;
+    text-align: center;
+  }
+  #topCopy { top: 7vh; }
+  #midCopy { top: 50%; transform: translateY(-50%); }
+
+  .line {
+    opacity: 0;
+    filter: blur(6px);
+    transition: opacity 2.2s ease, filter 2.2s ease, transform 2.2s ease;
+  }
+  .line.show {
+    opacity: 1; filter: blur(0);
+    transform: translateY(0);
+  }
+  .line { transform: translateY(16px); }
+
+  #t1 {
+    font-size: clamp(21px, 5.4vw, 38px);
+    font-weight: 600;
+    color: #fff0f6;
+    text-shadow: 0 0 10px rgba(255,110,165,.95), 0 0 34px rgba(255,45,120,.8), 0 0 80px rgba(255,45,120,.45);
+  }
+  #t2 {
+    font-size: clamp(15px, 3.8vw, 26px);
+    color: #ffd7e6;
+    text-shadow: 0 0 8px rgba(255,110,165,.8), 0 0 28px rgba(255,45,120,.55);
+  }
+  #t3 {
+    font-size: clamp(17px, 4.2vw, 30px);
+    color: #fff0f6;
+    text-shadow: 0 0 10px rgba(255,110,165,.95), 0 0 36px rgba(255,45,120,.8);
+  }
+  #t4 {
+    font-size: clamp(13px, 3vw, 20px);
+    color: #ffd7e6;
+    text-shadow: 0 0 8px rgba(255,110,165,.75), 0 0 24px rgba(255,45,120,.5);
+  }
+
+  #hint {
+    position: fixed; left: 0; right: 0; bottom: 5.5vh;
+    text-align: center;
+    font-family: "PingFang SC", "Microsoft YaHei", serif;
+    font-size: clamp(11px, 2.4vw, 14px);
+    letter-spacing: .4em; text-indent: .4em;
+    color: rgba(255,220,235,.55);
+    opacity: 0;
+    transition: opacity 2.5s ease;
+    pointer-events: none;
+  }
+  #hint.show { opacity: 1; animation: breathe 3s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .22; } }
+
+  #fade {
+    position: fixed; inset: 0; background: #05060f;
+    opacity: 0; pointer-events: none;
+    transition: opacity 2.4s ease;
+  }
+  #fade.show { opacity: 1; }
+  #end {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3vh;
+    opacity: 0; pointer-events: none;
+    transition: opacity 2.6s ease .8s;
+    font-family: "PingFang SC", "Microsoft YaHei", serif;
+    letter-spacing: .14em; text-align: center;
+  }
+  #end.show { opacity: 1; }
+  #end .rose-icon {
+    font-size: clamp(40px, 10vw, 64px);
+    filter: drop-shadow(0 0 14px rgba(255,45,120,.9)) drop-shadow(0 0 44px rgba(255,45,120,.55));
+  }
+  #end .t {
+    font-size: clamp(17px, 4.4vw, 28px);
+    color: #fff0f6;
+    text-shadow: 0 0 10px rgba(255,110,165,.9), 0 0 36px rgba(255,45,120,.7);
+  }
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+
+<div class="copy" id="topCopy">
+  <div class="line" id="t1">对不起，让你生气了</div>
+  <div class="line" id="t2">是我任性了，没真正理解你温柔的意思</div>
+</div>
+<div class="copy" id="midCopy">
+  <div class="line" id="t3">你的晴天，才是我的晴天</div>
+  <div class="line" id="t4">特地做这星轨玫瑰，送给你</div>
+</div>
+<div id="hint">轻触屏幕，结束这份心意</div>
+
+<div id="fade"></div>
+<div id="end">
+  <div class="rose-icon">🌹</div>
+  <div class="t">愿我们的每一天，都是晴天 🌤</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const cv = document.getElementById("sky");
+  const ctx = cv.getContext("2d");
+  let W = 0, H = 0, DPR = 1;
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const TAU = Math.PI * 2;
+
+  /* ============ 尺寸 ============ */
+  let CX = 0, CY = 0, R = 0;
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * DPR; cv.height = H * DPR;
+    cv.style.width = W + "px"; cv.style.height = H + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    CX = W / 2;
+    CY = H * 0.42;
+    R = Math.min(W, H) * 0.27;
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  /* ============ 玫瑰曲线 ============ */
+  // 五瓣玫瑰极坐标曲线：r = sin(2.5θ)，θ∈[0,4π)
+  function petalPoint(theta, scale, rot, cx, cy) {
+    const r = scale * R * Math.sin(2.5 * theta);
+    const a = theta + rot;
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+  }
+  // 花茎：向下微弯的贝塞尔
+  function stemPoint(t) {
+    const y0 = CY + R * 0.55, len = Math.min(H - y0 - H * 0.06, R * 2.6);
+    const sway = Math.sin(t * Math.PI * 1.15) * R * 0.28 * t;
+    return { x: CX + sway, y: y0 + t * len };
+  }
+  // 叶子：以 (sx,sy) 为起点向外伸展的弧
+  function leafPoint(t, sx, sy, dir) {
+    const len = R * 0.75, lift = R * 0.42;
+    return { x: sx + dir * t * len, y: sy - Math.sin(t * Math.PI) * lift + t * t * R * 0.18 };
+  }
+
+  // 所有小径段（星座连线目标），每段 {pts:[{x,y}...], w:线宽, hue}
+  let paths = [];
+  function buildPaths() {
+    paths = [];
+    const layers = [
+      { n: 220, s: 1.00, rot: -Math.PI / 2, w: 2.2, a: .95 },
+      { n: 170, s: 0.66, rot: -Math.PI / 2 + 0.63, w: 1.7, a: .85 },
+      { n: 130, s: 0.37, rot: -Math.PI / 2 + 1.26, w: 1.4, a: .8 }
+    ];
+    layers.forEach(L => {
+      const pts = [];
+      for (let i = 0; i <= L.n; i++) {
+        const th = (i / L.n) * TAU * 2;
+        pts.push(petalPoint(th, L.s, L.rot, CX, CY));
+      }
+      paths.push({ pts, w: L.w, a: L.a });
+    });
+    // 花心小星团
+    const core = [];
+    for (let i = 0; i < 24; i++) {
+      const a = rand(0, TAU), r = rand(0, R * 0.13);
+      core.push({ x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) * 0.82 });
+    }
+    paths.push({ pts: core, w: 1.2, a: .75 });
+    // 花茎
+    const stem = [];
+    for (let i = 0; i <= 40; i++) stem.push(stemPoint(i / 40));
+    paths.push({ pts: stem, w: 1.8, a: .85 });
+    // 两片叶子
+    [[0.32, -1], [0.55, 1]].forEach(([tt, dir]) => {
+      const p0 = stemPoint(tt), leaf = [p0];
+      for (let i = 1; i <= 16; i++) leaf.push(leafPoint(i / 16, p0.x, p0.y, dir));
+      paths.push({ pts: leaf, w: 1.5, a: .8 });
+    });
+  }
+  buildPaths();
+  window.addEventListener("resize", buildPaths);
+
+  /* ============ 背景星空 ============ */
+  let bgStars = [], shooting = [], orbiters = [];
+  function buildBg() {
+    bgStars = [];
+    const n = Math.floor(W * H / 4200);
+    for (let i = 0; i < n; i++) {
+      bgStars.push({
+        x: Math.random() * W, y: Math.random() * H,
+        r: rand(.3, 1.5), tw: rand(0, TAU), sp: rand(.4, 1.6),
+        pink: Math.random() < .18
+      });
+    }
+    // 远景星轨：绕花心缓慢旋转的小星
+    orbiters = [];
+    for (let i = 0; i < 26; i++) {
+      orbiters.push({
+        rad: rand(R * 1.25, Math.max(W, H) * .75),
+        ang: rand(0, TAU),
+        sp: rand(.02, .08) * (Math.random() < .5 ? 1 : -1) / 60,
+        r: rand(.5, 1.4),
+        trail: []
+      });
+    }
+  }
+  buildBg();
+  window.addEventListener("resize", buildBg);
+
+  function spawnMeteor() {
+    if (shooting.length > 2 || Math.random() > .006) return;
+    const fromLeft = Math.random() < .5;
+    shooting.push({
+      x: fromLeft ? -40 : W + 40,
+      y: rand(0, H * .45),
+      vx: (fromLeft ? 1 : -1) * rand(7, 12),
+      vy: rand(2.5, 5),
+      life: 1
+    });
+  }
+
+  /* ============ 沿曲线滑行的亮星（星轨） ============ */
+  const comets = [];
+  function buildComets() {
+    comets.length = 0;
+    paths.forEach((p, pi) => {
+      const count = Math.max(1, Math.round(p.pts.length / 90));
+      for (let k = 0; k < count; k++) {
+        comets.push({
+          path: pi,
+          t: rand(0, 1),
+          speed: rand(.0006, .0016) * (pi >= 4 ? .7 : 1),
+          size: rand(1.6, 3.2),
+          trailLen: rand(14, 30)
+        });
+      }
+    });
+  }
+  buildComets();
+  window.addEventListener("resize", buildComets);
+
+  function pathPoint(p, t) {
+    const pts = p.pts, f = t * (pts.length - 1);
+    const i = Math.min(pts.length - 2, Math.floor(f)), u = f - i;
+    return {
+      x: pts[i].x + (pts[i + 1].x - pts[i].x) * u,
+      y: pts[i].y + (pts[i + 1].y - pts[i].y) * u
+    };
+  }
+
+  /* ============ 时间轴（ms） ============ */
+  const T = {
+    bgIn: 0, drawStart: 2500, drawDur: 9000,
+    t1: 6500, t2: 10500,
+    t3: 14500, t4: 18500,
+    hint: 22500, glowFull: 12500
+  };
+  const t0 = performance.now();
+
+  function show(id) { document.getElementById(id).classList.add("show"); }
+  setTimeout(() => show("t1"), T.t1);
+  setTimeout(() => show("t2"), T.t2);
+  setTimeout(() => show("t3"), T.t3);
+  setTimeout(() => show("t4"), T.t4);
+  setTimeout(() => show("hint"), T.hint);
+
+  /* ============ 结束 ============ */
+  let ended = false;
+  function endShow() {
+    if (ended) return; ended = true;
+    document.getElementById("fade").classList.add("show");
+    document.getElementById("end").classList.add("show");
+    document.getElementById("hint").classList.remove("show");
+  }
+  window.addEventListener("pointerdown", endShow);
+  window.addEventListener("keydown", endShow);
+
+  /* ============ 绘制 ============ */
+  function drawBg(now) {
+    // 深空底色（径向渐变）
+    const g = ctx.createRadialGradient(CX, CY * .9, 0, CX, CY * .9, Math.max(W, H) * .9);
+    g.addColorStop(0, "#0d1024");
+    g.addColorStop(.55, "#070a18");
+    g.addColorStop(1, "#04050e");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    const sec = now * .001;
+    // 细碎闪烁星
+    for (const s of bgStars) {
+      const a = .2 + .6 * (.5 + .5 * Math.sin(sec * s.sp + s.tw));
+      ctx.globalAlpha = a;
+      ctx.fillStyle = s.pink ? "#ffb9d2" : "#dfe8ff";
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, TAU);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // 远景星轨（绕花心，带渐隐尾迹）
+    ctx.lineWidth = .7;
+    for (const o of orbiters) {
+      o.ang += o.sp;
+      const x = CX + o.rad * Math.cos(o.ang) * 1.15;
+      const y = CY * .92 + o.rad * Math.sin(o.ang) * .62;
+      o.trail.push({ x, y });
+      if (o.trail.length > 26) o.trail.shift();
+      for (let i = 1; i < o.trail.length; i++) {
+        const a = (i / o.trail.length) * .28;
+        ctx.strokeStyle = `rgba(180,200,255,${a})`;
+        ctx.beginPath();
+        ctx.moveTo(o.trail[i - 1].x, o.trail[i - 1].y);
+        ctx.lineTo(o.trail[i].x, o.trail[i].y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(220,232,255,.8)";
+      ctx.beginPath(); ctx.arc(x, y, o.r, 0, TAU); ctx.fill();
+    }
+
+    // 流星
+    spawnMeteor();
+    for (let i = shooting.length - 1; i >= 0; i--) {
+      const m = shooting[i];
+      m.x += m.vx; m.y += m.vy; m.life -= .012;
+      if (m.life <= 0) { shooting.splice(i, 1); continue; }
+      const grad = ctx.createLinearGradient(m.x, m.y, m.x - m.vx * 9, m.y - m.vy * 9);
+      grad.addColorStop(0, `rgba(255,240,248,${.9 * m.life})`);
+      grad.addColorStop(1, "rgba(255,240,248,0)");
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(m.x, m.y);
+      ctx.lineTo(m.x - m.vx * 9, m.y - m.vy * 9);
+      ctx.stroke();
+    }
+  }
+
+  function drawRose(now) {
+    const el = now - t0;
+    const prog = Math.max(0, Math.min(1, (el - T.drawStart) / T.drawDur));
+    if (prog <= 0) return;
+    const ease = 1 - Math.pow(1 - prog, 2.2);
+    const sec = now * .001;
+    const glowPulse = .7 + .3 * Math.sin(sec * 1.7);
+    const full = el > T.glowFull;
+
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+
+    paths.forEach((p, pi) => {
+      // 每条路径按顺序生长（错峰）
+      const stagger = pi / paths.length * .45;
+      const lp = Math.max(0, Math.min(1, (ease - stagger) / (1 - stagger * .6)));
+      if (lp <= 0) return;
+      const upto = Math.max(2, Math.ceil(p.pts.length * lp));
+
+      // 底层柔光（粗线低透明）
+      ctx.strokeStyle = `rgba(255,70,140,${.14 * p.a * glowPulse})`;
+      ctx.lineWidth = p.w * 5;
+      ctx.beginPath();
+      ctx.moveTo(p.pts[0].x, p.pts[0].y);
+      for (let i = 1; i < upto; i++) ctx.lineTo(p.pts[i].x, p.pts[i].y);
+      ctx.stroke();
+
+      // 主发光线
+      ctx.strokeStyle = `rgba(255,130,180,${.65 * p.a * glowPulse})`;
+      ctx.lineWidth = p.w;
+      ctx.shadowColor = "rgba(255,45,120,.9)";
+      ctx.shadowBlur = 10 * glowPulse;
+      ctx.beginPath();
+      ctx.moveTo(p.pts[0].x, p.pts[0].y);
+      for (let i = 1; i < upto; i++) ctx.lineTo(p.pts[i].x, p.pts[i].y);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // 生长前端的亮星
+      if (lp < 1) {
+        const head = p.pts[upto - 1];
+        ctx.fillStyle = "rgba(255,255,255,.95)";
+        ctx.shadowColor = "rgba(255,150,190,1)";
+        ctx.shadowBlur = 18;
+        ctx.beginPath(); ctx.arc(head.x, head.y, 2.6, 0, TAU); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    });
+
+    // 星轨彗星：沿曲线滑行并拖尾
+    comets.forEach(c => {
+      c.t += c.speed;
+      if (c.t > 1) c.t -= 1;
+      const p = paths[c.path];
+      ctx.beginPath();
+      let first = true;
+      for (let k = 0; k <= c.trailLen; k++) {
+        const tt = Math.max(0, c.t - k * c.speed * 2.2);
+        const pt = pathPoint(p, tt);
+        if (first) { ctx.moveTo(pt.x, pt.y); first = false; }
+        else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.strokeStyle = "rgba(255,200,225,.5)";
+      ctx.lineWidth = c.size * .55;
+      ctx.stroke();
+      const head = pathPoint(p, c.t);
+      ctx.fillStyle = "rgba(255,245,250,.95)";
+      ctx.shadowColor = "rgba(255,120,170,1)";
+      ctx.shadowBlur = 14;
+      ctx.beginPath(); ctx.arc(head.x, head.y, c.size, 0, TAU); ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    // 完成态：花心呼吸光晕 + 偶发绽放闪光
+    if (full) {
+      const halo = ctx.createRadialGradient(CX, CY, 0, CX, CY, R * 1.5);
+      halo.addColorStop(0, `rgba(255,60,130,${.13 * glowPulse})`);
+      halo.addColorStop(1, "rgba(255,60,130,0)");
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(CX, CY, R * 1.5, 0, TAU); ctx.fill();
+    }
+
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  function frame(now) {
+    if (!ended) {
+      drawBg(now);
+      drawRose(now);
+    } else {
+      ctx.fillStyle = "rgba(5,6,15,1)";
+      ctx.fillRect(0, 0, W, H);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
