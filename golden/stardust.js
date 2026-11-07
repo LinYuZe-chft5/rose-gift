@@ -3,7 +3,11 @@
   const canvas = document.querySelector('#golden');
   const media = matchMedia('(prefers-reduced-motion: reduce)');
   const query = new URLSearchParams(location.search);
-  const gl = canvas.getContext('webgl', { alpha: false, antialias: false, preserveDrawingBuffer: true });
+  const background = document.createElement('canvas');
+  background.className = 'stardust-bg'; background.setAttribute('aria-hidden', 'true');
+  canvas.before(background);
+  const bgx = background.getContext('2d');
+  const gl = canvas.getContext('webgl', { alpha: true, antialias: false, preserveDrawingBuffer: true });
   const glow = document.createElement('canvas');
   glow.setAttribute('aria-hidden', 'true'); glow.style.pointerEvents = 'none';
   canvas.after(glow);
@@ -15,9 +19,11 @@
   const bytes = Uint8Array.from(encoded, c => c.charCodeAt(0));
   const points = new Float32Array(bytes.buffer);
   const baseAlpha = new Float32Array(model.routes.map(r => points[r[0]*12+5]));
-  let width, height, ratio, scale, origin, frame = 0, elapsed = 0, last = 0;
+  let width, height, ratio, scale, origin, frame = 0, elapsed = 0, last = 0, stars = [], meteors = [];
   let paused = false, burst = -100, pointer = [-9999, -9999];
   const frozen = () => media.matches || query.get('freeze') === '1';
+  const randomStars = () => { const count = Math.min(110, Math.max(52, Math.round(width * height / 8200))); stars = Array.from({ length: count }, (_, i) => ({ x: Math.random() * width, y: Math.random() * height, r: .35 + Math.random() * 1.35, a: .22 + Math.random() * .55, p: Math.random() * 6.28, s: .00025 + Math.random() * .00055, warm: Math.random() > .72, i })); meteors = Array.from({ length: width < 520 ? 2 : 4 }, (_, i) => ({ x: Math.random() * width, y: Math.random() * height * .62, len: 42 + Math.random() * 90, speed: .12 + Math.random() * .16, phase: Math.random() * 9000, delay: i * 2600 })); };
+  function drawBackground(now) { bgx.clearRect(0, 0, width, height); const wash = bgx.createRadialGradient(width * .5, height * .42, 0, width * .5, height * .42, Math.max(width, height) * .72); wash.addColorStop(0, 'rgba(47,20,65,.34)'); wash.addColorStop(.55, 'rgba(8,12,33,.22)'); wash.addColorStop(1, 'rgba(0,0,4,0)'); bgx.fillStyle = wash; bgx.fillRect(0, 0, width, height); for (const s of stars) { const pulse = frozen() ? 1 : .7 + Math.sin(now * s.s + s.p) * .3; bgx.beginPath(); bgx.fillStyle = s.warm ? `rgba(255,220,218,${s.a * pulse})` : `rgba(190,220,255,${s.a * pulse})`; bgx.arc(s.x, s.y, s.r, 0, 6.28); bgx.fill(); } if (!frozen()) for (const m of meteors) { const t = ((now - m.delay + m.phase) % 9000) / 9000; if (t > .78) continue; const x = m.x + t * width * .42, y = m.y + t * height * .25; const g = bgx.createLinearGradient(x - m.len, y - m.len * .6, x, y); g.addColorStop(0, 'rgba(255,190,215,0)'); g.addColorStop(1, 'rgba(255,230,240,.8)'); bgx.strokeStyle = g; bgx.lineWidth = 1.2; bgx.beginPath(); bgx.moveTo(x - m.len, y - m.len * .6); bgx.lineTo(x, y); bgx.stroke(); } }
   const vertex = `precision highp float;
     attribute vec2 home; attribute vec3 color; attribute vec4 props; attribute vec3 flow;
     uniform vec2 view,origin,mouse; uniform float scale,dpr,time,freeze,burst; uniform sampler2D silhouette;
@@ -91,14 +97,18 @@
   function resize() {
     width = innerWidth; height = innerHeight; ratio = Math.min(devicePixelRatio || 1, 2);
     canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
+    background.width = Math.round(width * ratio); background.height = Math.round(height * ratio);
     glow.width = canvas.width; glow.height = canvas.height;
     bloomSource.width = Math.round(width*.5); bloomSource.height = Math.round(height*.5);
     const header = document.querySelector('header').getBoundingClientRect();
     const footer = document.querySelector('footer').getBoundingClientRect();
     const top = header.bottom + 22, bottom = footer.top - 22;
     const b = model.bounds;
-    scale = Math.min((bottom-top)/(b[3]-b[1]+32), width*.82/(b[2]-b[0]+24));
-    origin = [width / 2 - model.center * scale, (top+bottom)/2-(b[1]+b[3])/2*scale];
+    const usableTop = Math.max(top, 0), usableBottom = Math.min(bottom, height);
+    scale = Math.min((usableBottom-usableTop)/(b[3]-b[1]+18), width*.9/(b[2]-b[0]+18));
+    scale = Math.max(.36, scale);
+    origin = [width / 2 - (b[0]+b[2])/2*scale, (usableTop+usableBottom)/2-(b[1]+b[3])/2*scale];
+    randomStars();
     if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
     render(elapsed);
   }
@@ -119,7 +129,7 @@
       gl.useProgram(program);
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, points);
-      gl.clearColor(.012, .025, .033, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.uniform2f(uniforms.view, width, height); gl.uniform2f(uniforms.origin, ...origin);
       gl.uniform2f(uniforms.mouse, ...pointer);
       for (const [key, value] of Object.entries({ scale, dpr: ratio, time, freeze: frozen() ? 1 : 0, burst })) gl.uniform1f(uniforms[key], value);
@@ -138,12 +148,13 @@
       glowContext.globalAlpha = 1; glowContext.filter = 'none';
     } else {
       fallback.setTransform(ratio, 0, 0, ratio, 0, 0);
-      fallback.fillStyle = '#030609'; fallback.fillRect(0, 0, width, height);
+      fallback.clearRect(0, 0, width, height);
       for (let i = 0; i < points.length; i += 24) {
         fallback.fillStyle = `rgba(${points[i+2]*255},${points[i+3]*255},${points[i+4]*255},${points[i+5]})`;
         fallback.fillRect(origin[0]+points[i]*scale, origin[1]+points[i+1]*scale, 1, 1);
       }
     }
+    drawBackground(time * 1000);
     window.goldenStatus = { renderer: gl ? 'WebGL stardust + dual-scale bloom' : 'Canvas fallback', time, count: model.count, paths: model.paths.length, center: model.center, reducedMotion: media.matches, scale, origin, bounds: { left: origin[0]+model.bounds[0]*scale, right: origin[0]+model.bounds[2]*scale, top: origin[1]+model.bounds[1]*scale, bottom: origin[1]+model.bounds[3]*scale } };
   }
   function tick(now) {
