@@ -3,8 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#05060f">
 <title>星轨玫瑰 · 希望你喜欢</title>
+<link rel="stylesheet" href="golden-meadow.css?v=4.3">
+<link rel="stylesheet" href="petal-lab.css?v=4.3">
+<link rel="stylesheet" href="petal-mass.css?v=4.3">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -105,6 +111,28 @@
 </head>
 <body>
 <canvas id="sky"></canvas>
+
+<section id="petal-mass" hidden aria-label="Petal Mass and Flow Laboratory">
+  <div class="pm-shell">
+    <header class="pm-head">
+      <div>
+        <h1>Petal Mass &amp; Flow Laboratory</h1>
+        <p>连续体积区域、平滑方向场、受控分布与前后遮挡。验证未来花瓣金毛的底层组织，不绘制主体和汇聚动画。</p>
+      </div>
+      <div class="pm-scale" role="group" aria-label="观察尺度">
+        <button type="button" data-scale="overview" aria-pressed="true">整体</button>
+        <button type="button" data-scale="detail" aria-pressed="false">细节</button>
+      </div>
+    </header>
+    <main class="pm-grid">
+      <article class="pm-card"><h2>A · Continuous Mass</h2><p>内部填充的有机体积块，边界收束，避免链状断裂。</p><canvas id="pm-a"></canvas></article>
+      <article class="pm-card"><h2>B · Curved Flow Mass</h2><p>可变宽度弯曲区域，方向随曲率连续变化。</p><canvas id="pm-b"></canvas></article>
+      <article class="pm-card"><h2>C · Radial Wrap Mass</h2><p>由局部组织中心向外围过渡，不使用机械同心圆。</p><canvas id="pm-c"></canvas></article>
+      <article class="pm-card"><h2>D · Flow Transition Mass</h2><p>同一体积内平滑切换放射、包覆与顺向毛流。</p><canvas id="pm-d"></canvas></article>
+    </main>
+    <div class="pm-foot">四个样例共享 PetalMass、PetalFlowField、PetalDistribution、PetalOcclusion 和 PetalMaterial。</div>
+  </div>
+</section>
 
 <div class="copy" id="topCopy">
   <div class="line" id="t1">对不起，让你生气了</div>
@@ -293,9 +321,15 @@
   let ended = false;
   function endShow() {
     if (ended) return; ended = true;
+    document.getElementById("hint").classList.remove("show");
+    if (typeof window.enterGoldenMeadow === "function") {
+      document.getElementById("fade").classList.add("show");
+      setTimeout(() => { window.location.href = "golden/index.html"; },
+        matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 2400);
+      return;
+    }
     document.getElementById("fade").classList.add("show");
     document.getElementById("end").classList.add("show");
-    document.getElementById("hint").classList.remove("show");
   }
   window.addEventListener("pointerdown", endShow);
   window.addEventListener("keydown", endShow);
@@ -457,6 +491,44 @@
   }
   requestAnimationFrame(frame);
 })();
+</script>
+<script src="golden-meadow.js?v=5.0"></script>
+<script src="petal-lab.js"></script>
+<script src="petal-mass.js?v=5.1"></script>
+<script>
+  (() => {
+    const lab = new URLSearchParams(location.search).get('lab');
+    if (!lab) return;
+    window.__labRoute = lab;
+    window.addEventListener('error', event => {
+      if (lab !== 'mass' || document.querySelector('#petal-mass')) return;
+      document.body.insertAdjacentHTML('beforeend', `<div id="lab-boot-error" style="position:fixed;inset:0;z-index:999;background:#142118;color:#fff1d6;padding:32px;font:16px/1.7 sans-serif"><h1>Petal Mass Laboratory</h1><p>实验室脚本启动失败，错误信息：</p><pre style="white-space:pre-wrap;color:#f3c27b">${String(event.error?.message || event.message || 'Unknown error')}</pre><p>请刷新页面重试。</p></div>`);
+    });
+    document.documentElement.classList.add(`is-${lab}-route`);
+    const firstPageNodes = ['#sky', '.copy', '#fade', '#end'];
+    firstPageNodes.forEach(selector => document.querySelectorAll(selector).forEach(node => {
+      node.style.setProperty('display', 'none', 'important');
+      node.style.setProperty('visibility', 'hidden', 'important');
+      node.style.setProperty('pointer-events', 'none', 'important');
+    }));
+    if (lab === 'mass') {
+      const ensureLab = () => {
+        const panel = document.querySelector('#petal-mass');
+        document.body.style.setProperty('background', '#142118', 'important');
+        if (panel) {
+          panel.style.setProperty('display', 'block', 'important');
+          panel.style.setProperty('visibility', 'visible', 'important');
+          panel.style.setProperty('opacity', '1', 'important');
+          panel.style.setProperty('z-index', '1000', 'important');
+          return;
+        }
+        if (!document.querySelector('#lab-boot-error')) {
+          document.body.insertAdjacentHTML('beforeend', '<div id="lab-boot-error" style="position:fixed;inset:0;z-index:1000;display:block;background:#142118;color:#fff1d6;padding:32px;font:16px/1.7 sans-serif"><h1>Petal Mass Laboratory</h1><p>实验室脚本没有成功加载。请确认 8765 服务正在运行，然后刷新此地址。</p><p style="color:#f3c27b">状态：petal-mass.js 未创建实验室节点</p></div>');
+        }
+      };
+      setTimeout(ensureLab, 250);
+    }
+  })();
 </script>
 </body>
 </html>

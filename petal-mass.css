@@ -1,0 +1,15 @@
+#petal-mass { position: fixed; inset: 0; z-index: 100; overflow: auto; background: #142118; color: #fff1d6; font-family: Georgia, "Microsoft YaHei", serif; }
+.pm-shell { width: min(1220px, 100%); margin: auto; padding: 26px 20px 44px; }
+.pm-head { display:flex; justify-content:space-between; gap:20px; align-items:end; margin-bottom:18px; }
+.pm-head h1 { margin:0; font-size:clamp(24px,4vw,40px); font-weight:500; letter-spacing:.04em; }
+.pm-head p { margin:0; max-width:470px; color:rgba(255,241,214,.66); font:13px/1.6 "Microsoft YaHei",sans-serif; }
+.pm-scale { display:flex; flex:none; gap:4px; padding:3px; border:1px solid rgba(255,218,155,.25); background:rgba(5,14,9,.55); }
+.pm-scale button { border:0; padding:8px 14px; color:rgba(255,241,214,.62); background:transparent; font:13px "Microsoft YaHei",sans-serif; cursor:pointer; }
+.pm-scale button[aria-pressed="true"] { color:#fff1d6; background:rgba(217,145,67,.3); }
+.pm-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:15px; }
+.pm-card { overflow:hidden; border:1px solid rgba(255,218,155,.24); background:rgba(7,18,11,.48); }
+.pm-card h2 { margin:0; padding:14px 16px 4px; font-size:16px; font-weight:500; letter-spacing:.06em; }
+.pm-card p { margin:0; padding:0 16px 8px; color:rgba(255,241,214,.58); font:12px/1.5 "Microsoft YaHei",sans-serif; }
+.pm-card canvas { display:block; width:100%; height:270px; }
+.pm-foot { margin-top:16px; color:rgba(255,241,214,.5); font:12px/1.6 "Microsoft YaHei",sans-serif; }
+@media (max-width:680px) { .pm-shell{padding:18px 11px 30px}.pm-head{display:block}.pm-head p{margin-top:8px}.pm-scale{margin-top:12px;width:max-content}.pm-grid{grid-template-columns:1fr;gap:11px}.pm-card canvas{height:230px} }

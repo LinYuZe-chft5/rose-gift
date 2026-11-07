@@ -1,0 +1,8 @@
+html,body{background:#030609;color:#edf5fa;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+header,footer{animation:none}
+header p,footer p{color:#c4d4df;opacity:.65}
+h1{font-weight:400;letter-spacing:.18em;text-shadow:0 0 24px #c4e6ff28}
+button,a{color:#c4d4df;letter-spacing:.12em}
+button{border:1px solid #d0e6f226;border-radius:24px;padding:8px 20px;background:#c4e6ff05;margin-bottom:8px}
+button:hover{background:#c4e6ff10;color:#fff}
+button:focus-visible,a:focus-visible{outline-color:#c4e6ff}
